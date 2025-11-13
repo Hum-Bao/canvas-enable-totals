@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Canvas Enable Totals
 // @namespace    humbao.dev
-// @version      1.1
+// @version      1.2
 // @description  Return calculation of totals on Canvas
 // @author       HumBao
 // @include      http*://canvas.*.edu/courses/*/grades
