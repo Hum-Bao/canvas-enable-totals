@@ -8,19 +8,18 @@
 // @include      http*://*.instructure.com/courses/*/grades
 // @run-at       document-end
 // @grant        none
-// @downloadURL  https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/main/CanvasEnableTotals.user.js
-// @updateURL    https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/main/CanvasEnableTotals.meta.js
-// @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/main/modules/core.js
-// @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/main/modules/weights.js
-// @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/main/modules/policies.js
-// @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/main/modules/gpa.js
+// @downloadURL  https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/CanvasEnableTotals-modular.user.js
+// @updateURL    https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/CanvasEnableTotals.meta.js
+// @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/modules/core.js
+// @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/modules/weights.js
+// @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/modules/policies.js
+// @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/modules/gpa.js
 // ==/UserScript==
 
 // ============================================================================
-// Canvas Enable Totals - Main Entry Point
+// Canvas Enable Totals
 // ============================================================================
-// This userscript enables grade totals on Canvas LMS.
-// All functionality is split into modular files for maintainability:
+// Enables grade totals on Canvas LMS.
 //   - core.js: Constants, utilities, core grade calculation logic
 //   - weights.js: Custom weights feature (storage + UI)
 //   - policies.js: Grade policies (drop lowest, full credit threshold)
