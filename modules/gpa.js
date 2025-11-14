@@ -111,7 +111,7 @@ function createGPAScaleUI() {
   const panel = createGPAScalePanel(container, saved_scale);
 
   const course_id = getCourseId();
-  const { wrapper } = createFeatureCheckbox({
+  const { wrapper, savedState } = createFeatureCheckbox({
     id: SELECTORS.gpa_scale_checkbox,
     label: "Enable GPA calculation (4.0 scale)",
     storageKey: STORAGE_KEYS.gpa_scale_enabled(course_id),
@@ -120,6 +120,11 @@ function createGPAScaleUI() {
   });
 
   container.insertBefore(wrapper, panel);
+
+  // Recalculate after UI is fully set up, if checkbox was previously checked
+  if (savedState) {
+    recalculateGrade();
+  }
 }
 
 function createGPAScalePanel(container, savedScale) {

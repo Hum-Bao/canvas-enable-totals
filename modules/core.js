@@ -373,8 +373,9 @@ function createFeatureCheckbox(config) {
 
   const checkbox = wrapper.querySelector("input");
 
+  let savedState = false;
   try {
-    const savedState = localStorage.getItem(storageKey) === "true";
+    savedState = localStorage.getItem(storageKey) === "true";
     checkbox.checked = savedState;
     panel.style.display = savedState ? "" : "none";
 
@@ -394,15 +395,12 @@ function createFeatureCheckbox(config) {
       recalculateGrade();
     });
 
-    // Recalculate on load if checkbox was previously checked
-    if (savedState) {
-      recalculateGrade();
-    }
+    // Don't recalculate immediately on load - let the module handle it after full setup
   } catch (err) {
     console.error("Failed to load checkbox state:", err);
   }
 
-  return { wrapper, checkbox };
+  return { wrapper, checkbox, savedState };
 }
 
 function createWeightsContainer(displayElement) {

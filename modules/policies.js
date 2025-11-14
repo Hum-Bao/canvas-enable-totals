@@ -148,7 +148,7 @@ function createGradePoliciesUI(categories) {
   const panel = createPoliciesPanel(container, categories, saved_policies);
 
   const course_id = getCourseId();
-  const { wrapper } = createFeatureCheckbox({
+  const { wrapper, savedState } = createFeatureCheckbox({
     id: SELECTORS.grade_policies_checkbox,
     label: "Enable grade policies (drop lowest, full credit thresholds)",
     storageKey: STORAGE_KEYS.policies_enabled(course_id),
@@ -157,6 +157,11 @@ function createGradePoliciesUI(categories) {
   });
 
   container.insertBefore(wrapper, panel);
+
+  // Recalculate after UI is fully set up, if checkbox was previously checked
+  if (savedState) {
+    recalculateGrade();
+  }
 }
 
 function createPoliciesPanel(container, categories, savedPolicies) {

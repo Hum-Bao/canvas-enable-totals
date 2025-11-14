@@ -104,7 +104,7 @@ function createCustomWeightsUI(categories) {
   const panel = createWeightsTable(container, categories, saved_weights);
 
   const course_id = getCourseId();
-  const { wrapper } = createFeatureCheckbox({
+  const { wrapper, savedState } = createFeatureCheckbox({
     id: SELECTORS.custom_weight_checkbox,
     label: "Enable custom assignment weights",
     storageKey: STORAGE_KEYS.enabled(course_id),
@@ -114,6 +114,11 @@ function createCustomWeightsUI(categories) {
 
   container.insertBefore(wrapper, panel);
   updateWeightTotal();
+
+  // Recalculate after UI is fully set up, if checkbox was previously checked
+  if (savedState) {
+    recalculateGrade();
+  }
 }
 
 function createWeightsTable(container, categories, savedWeights) {
