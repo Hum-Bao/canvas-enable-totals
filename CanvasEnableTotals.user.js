@@ -8,7 +8,7 @@
 // @include      http*://*.instructure.com/courses/*/grades
 // @run-at       document-end
 // @grant        none
-// @downloadURL  https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/CanvasEnableTotals-modular.user.js
+// @downloadURL  https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/CanvasEnableTotals.user.js
 // @updateURL    https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/CanvasEnableTotals.meta.js
 // @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/modules/core.js
 // @require      https://raw.githubusercontent.com/Hum-Bao/canvas-enable-totals/refs/heads/Experimental/modules/weights.js
