@@ -166,18 +166,6 @@ function calculateFinalGrade(weight_map, grade_map, display_element) {
   display_element.textContent = `Total: ${formatPercent(final_grade)}%${gpa_text}`;
 }
 
-const dom_cache = {
-  gradeTable: null,
-  displayElement: null,
-};
-
-function getGradeTable() {
-  if (!dom_cache.gradeTable) {
-    dom_cache.gradeTable = document.getElementById(SELECTORS.grade_table);
-  }
-  return dom_cache.gradeTable;
-}
-
 function extractAllAssignments(weight_map) {
   if (assignmentCache) {
     return assignmentCache;
