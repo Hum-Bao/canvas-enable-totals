@@ -34,10 +34,19 @@ function saveGPAScale(scaleArray) {
     return;
   }
 
-  localStorage.setItem(
-    STORAGE_KEYS.gpa_scale(course_id),
-    JSON.stringify(scaleArray)
-  );
+  try {
+    localStorage.setItem(
+      STORAGE_KEYS.gpa_scale(course_id),
+      JSON.stringify(scaleArray)
+    );
+  } catch (err) {
+    if (err.name === "QuotaExceededError") {
+      console.error("LocalStorage quota exceeded. Cannot save GPA scale.");
+      alert("Unable to save GPA scale. Storage quota exceeded.");
+    } else {
+      console.error("Failed to save GPA scale:", err);
+    }
+  }
 }
 
 function loadGPAScale() {
@@ -59,28 +68,8 @@ function loadGPAScale() {
   }
 }
 
-function saveGPAScaleCheckboxState(checked) {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return;
-  }
-
-  localStorage.setItem(STORAGE_KEYS.gpa_scale_enabled(course_id), checked);
-}
-
-function loadGPAScaleCheckboxState() {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return false;
-  }
-
-  return (
-    localStorage.getItem(STORAGE_KEYS.gpa_scale_enabled(course_id)) === "true"
-  );
-}
-
 function getGPAScale() {
-  const tbody = document.getElementById(SELECTORS.gpa_scale_body);
+  const tbody = getGPAScaleBody();
   if (!tbody) {
     return [];
   }
@@ -112,33 +101,25 @@ function getGPAScale() {
 // GPA Scale UI Functions
 // ============================================================================
 function createGPAScaleUI() {
-  const display_element = document.getElementById(SELECTORS.grade_display);
+  const display_element = getDisplayElement();
   if (!display_element) {
     return;
   }
 
   const saved_scale = loadGPAScale();
   const container = createWeightsContainer(display_element);
-  const checkbox = createGPAScaleCheckbox(container);
   const panel = createGPAScalePanel(container, saved_scale);
 
-  setupGPAScaleCheckboxBehavior(checkbox, panel);
-}
+  const course_id = getCourseId();
+  const { wrapper } = createFeatureCheckbox({
+    id: SELECTORS.gpa_scale_checkbox,
+    label: "Enable GPA calculation (4.0 scale)",
+    storageKey: STORAGE_KEYS.gpa_scale_enabled(course_id),
+    panel: panel,
+    onToggle: null,
+  });
 
-function createGPAScaleCheckbox(container) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "ic-Form-control ic-Form-control--checkbox";
-  wrapper.style.marginBottom = "15px";
-  wrapper.style.marginTop = "20px";
-  wrapper.innerHTML = `
-    <input type="checkbox" id="${SELECTORS.gpa_scale_checkbox}">
-    <label class="ic-Label" for="${SELECTORS.gpa_scale_checkbox}">
-      Enable GPA calculation (4.0 scale)
-    </label>
-  `;
-
-  container.appendChild(wrapper);
-  return wrapper.querySelector("input");
+  container.insertBefore(wrapper, panel);
 }
 
 function createGPAScalePanel(container, savedScale) {
@@ -215,7 +196,7 @@ function createGPAScaleRow(range) {
              step="0.01" 
              value="${range.min_percent}" 
              data-gpa="min"
-             style="width: 70px;"
+             class="gpa-input"
              title="Minimum percentage for this range">
     </td>
     <td>
@@ -225,7 +206,7 @@ function createGPAScaleRow(range) {
              step="0.01" 
              value="${range.max_percent}" 
              data-gpa="max"
-             style="width: 70px;"
+             class="gpa-input"
              title="Maximum percentage for this range">
     </td>
     <td>
@@ -235,16 +216,32 @@ function createGPAScaleRow(range) {
              step="0.01" 
              value="${range.gpa_value}" 
              data-gpa="value"
-             style="width: 60px;"
+             class="gpa-input"
              title="GPA value for this range">
     </td>
     <td>
-      <button class="btn btn-small delete-row" style="color: red; font-weight: bold;" title="Delete this range">×</button>
+      <button class="btn btn-small delete-row" title="Delete this range">×</button>
     </td>
   `;
 
-  // Add change listeners
+  // Add change listeners and validation
+  const min_input = row.querySelector('[data-gpa="min"]');
+  const max_input = row.querySelector('[data-gpa="max"]');
   const inputs = row.querySelectorAll("input");
+
+  // Validate min/max relationship
+  const validate_range = () => {
+    const min_val = parseFloat(min_input.value) || 0;
+    const max_val = parseFloat(max_input.value) || 0;
+
+    if (min_val > max_val) {
+      max_input.value = min_input.value;
+    }
+  };
+
+  min_input.addEventListener("change", validate_range);
+  max_input.addEventListener("change", validate_range);
+
   for (const input of inputs) {
     input.addEventListener("change", () => {
       recalculateGrade();
@@ -259,22 +256,4 @@ function createGPAScaleRow(range) {
   });
 
   return row;
-}
-
-function setupGPAScaleCheckboxBehavior(checkbox, panel) {
-  const saved_state = loadGPAScaleCheckboxState();
-  checkbox.checked = saved_state;
-  panel.style.display = saved_state ? "" : "none";
-
-  checkbox.addEventListener("change", (e) => {
-    const is_checked = e.target.checked;
-    panel.style.display = is_checked ? "" : "none";
-    saveGPAScaleCheckboxState(is_checked);
-    recalculateGrade();
-  });
-
-  // Recalculate on load if checkbox was previously checked
-  if (saved_state) {
-    recalculateGrade();
-  }
 }

@@ -37,13 +37,78 @@ const STORAGE_KEYS = {
 // ============================================================================
 const formatPercent = (n) => (Number.isFinite(n) ? n.toFixed(2) : "0.00");
 
-const getCourseId = () =>
-  window.location.pathname.match(/\/courses\/(\d+)/)?.[1] || null;
-
 const parseFloatOrZero = (value) => {
   const parsed = parseFloat(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+// ============================================================================
+// DOM Cache
+// ============================================================================
+const dom_cache = {
+  gradeTable: null,
+  displayElement: null,
+  customWeightBody: null,
+  gradePoliciesBody: null,
+  gpaScaleBody: null,
+  courseId: null,
+};
+
+function getCourseId() {
+  if (!dom_cache.courseId) {
+    dom_cache.courseId =
+      window.location.pathname.match(/\/courses\/(\d+)/)?.[1] || null;
+  }
+  return dom_cache.courseId;
+}
+
+function getDisplayElement() {
+  if (!dom_cache.displayElement) {
+    dom_cache.displayElement = document.getElementById(SELECTORS.grade_display);
+  }
+  return dom_cache.displayElement;
+}
+
+function getGradeTable() {
+  if (!dom_cache.gradeTable) {
+    dom_cache.gradeTable = document.getElementById(SELECTORS.grade_table);
+  }
+  return dom_cache.gradeTable;
+}
+
+function getCustomWeightBody() {
+  if (!dom_cache.customWeightBody) {
+    dom_cache.customWeightBody = document.getElementById(
+      SELECTORS.custom_weight_body
+    );
+  }
+  return dom_cache.customWeightBody;
+}
+
+function getGradePoliciesBody() {
+  if (!dom_cache.gradePoliciesBody) {
+    dom_cache.gradePoliciesBody = document.getElementById(
+      SELECTORS.grade_policies_body
+    );
+  }
+  return dom_cache.gradePoliciesBody;
+}
+
+function getGPAScaleBody() {
+  if (!dom_cache.gpaScaleBody) {
+    dom_cache.gpaScaleBody = document.getElementById(SELECTORS.gpa_scale_body);
+  }
+  return dom_cache.gpaScaleBody;
+}
+
+// ============================================================================
+// Assignment Cache
+// ============================================================================
+let assignmentCache = null;
+
+function invalidateAssignmentCache() {
+  assignmentCache = null;
+}
 
 // ============================================================================
 // Grade Calculation Functions
@@ -114,6 +179,10 @@ function getGradeTable() {
 }
 
 function extractAllAssignments(weight_map) {
+  if (assignmentCache) {
+    return assignmentCache;
+  }
+
   const assignments_by_category = new Map();
   const grade_table = getGradeTable();
 
@@ -138,6 +207,7 @@ function extractAllAssignments(weight_map) {
     });
   }
 
+  assignmentCache = assignments_by_category;
   return assignments_by_category;
 }
 
@@ -246,13 +316,16 @@ function extractDefaultWeights() {
 }
 
 function recalculateGrade() {
+  // Invalidate cache since we're recalculating
+  invalidateAssignmentCache();
+
   const weight_checkbox = document.getElementById(
     SELECTORS.custom_weight_checkbox
   );
   const policies_checkbox = document.getElementById(
     SELECTORS.grade_policies_checkbox
   );
-  const display_element = document.getElementById(SELECTORS.grade_display);
+  const display_element = getDisplayElement();
 
   if (!display_element) {
     return;
@@ -267,6 +340,81 @@ function recalculateGrade() {
   const grade_map = extractGrades(weight_map, grade_policies);
 
   calculateFinalGrade(weight_map, grade_map, display_element);
+}
+
+// ============================================================================
+// CSS Injection
+// ============================================================================
+function injectStyles() {
+  if (document.getElementById("canvas-totals-styles")) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "canvas-totals-styles";
+  style.textContent = `
+    .weights-section { margin-top: 20px; }
+    .weights-section .ic-Form-control--checkbox { 
+      margin-bottom: 15px; 
+      margin-top: 20px; 
+    }
+    .weights-section table.summary { font-size: 0.9em; }
+    .weights-section input[type="number"] { width: 70px; }
+    .weights-section .gpa-input { width: 60px; }
+    .weights-section .weight-input { width: 80px; }
+    .delete-row { 
+      color: red; 
+      font-weight: bold; 
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// ============================================================================
+// Generic Checkbox Factory
+// ============================================================================
+function createFeatureCheckbox(config) {
+  const { id, label, storageKey, panel, onToggle } = config;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "ic-Form-control ic-Form-control--checkbox";
+  wrapper.innerHTML = `
+    <input type="checkbox" id="${id}">
+    <label class="ic-Label" for="${id}">${label}</label>
+  `;
+
+  const checkbox = wrapper.querySelector("input");
+
+  try {
+    const savedState = localStorage.getItem(storageKey) === "true";
+    checkbox.checked = savedState;
+    panel.style.display = savedState ? "" : "none";
+
+    checkbox.addEventListener("change", (e) => {
+      const isChecked = e.target.checked;
+      panel.style.display = isChecked ? "" : "none";
+
+      try {
+        localStorage.setItem(storageKey, isChecked);
+      } catch (err) {
+        console.error("Failed to save checkbox state:", err);
+      }
+
+      if (onToggle) {
+        onToggle(isChecked);
+      }
+      recalculateGrade();
+    });
+
+    // Recalculate on load if checkbox was previously checked
+    if (savedState) {
+      recalculateGrade();
+    }
+  } catch (err) {
+    console.error("Failed to load checkbox state:", err);
+  }
+
+  return { wrapper, checkbox };
 }
 
 function createWeightsContainer(displayElement) {

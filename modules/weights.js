@@ -12,11 +12,20 @@ function saveCustomWeights(weightMap) {
     return;
   }
 
-  const weights = Object.fromEntries(weightMap);
-  localStorage.setItem(
-    STORAGE_KEYS.weights(course_id),
-    JSON.stringify(weights)
-  );
+  try {
+    const weights = Object.fromEntries(weightMap);
+    localStorage.setItem(
+      STORAGE_KEYS.weights(course_id),
+      JSON.stringify(weights)
+    );
+  } catch (err) {
+    if (err.name === "QuotaExceededError") {
+      console.error("LocalStorage quota exceeded. Cannot save custom weights.");
+      alert("Unable to save custom weights. Storage quota exceeded.");
+    } else {
+      console.error("Failed to save custom weights:", err);
+    }
+  }
 }
 
 function loadCustomWeights() {
@@ -39,27 +48,9 @@ function loadCustomWeights() {
   }
 }
 
-function saveCheckboxState(checked) {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return;
-  }
-
-  localStorage.setItem(STORAGE_KEYS.enabled(course_id), String(checked));
-}
-
-function loadCheckboxState() {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return false;
-  }
-
-  return localStorage.getItem(STORAGE_KEYS.enabled(course_id)) === "true";
-}
-
 function getCustomWeights() {
   const custom_weight_map = new Map();
-  const tbody = document.getElementById(SELECTORS.custom_weight_body);
+  const tbody = getCustomWeightBody();
 
   if (!tbody) {
     return custom_weight_map;
@@ -81,7 +72,7 @@ function getCustomWeights() {
 }
 
 function updateWeightTotal() {
-  const tbody = document.getElementById(SELECTORS.custom_weight_body);
+  const tbody = getCustomWeightBody();
   const total_element = document.getElementById(SELECTORS.custom_weight_total);
 
   if (!tbody || !total_element) {
@@ -103,33 +94,26 @@ function updateWeightTotal() {
 // Custom Weights UI Functions
 // ============================================================================
 function createCustomWeightsUI(categories) {
-  const display_element = document.getElementById(SELECTORS.grade_display);
+  const display_element = getDisplayElement();
   if (!display_element) {
     return;
   }
 
   const saved_weights = loadCustomWeights();
   const container = createWeightsContainer(display_element);
-  const checkbox = createCheckbox(container);
-  const table = createWeightsTable(container, categories, saved_weights);
+  const panel = createWeightsTable(container, categories, saved_weights);
 
-  setupCheckboxBehavior(checkbox, table);
+  const course_id = getCourseId();
+  const { wrapper } = createFeatureCheckbox({
+    id: SELECTORS.custom_weight_checkbox,
+    label: "Enable custom assignment weights",
+    storageKey: STORAGE_KEYS.enabled(course_id),
+    panel: panel,
+    onToggle: null,
+  });
+
+  container.insertBefore(wrapper, panel);
   updateWeightTotal();
-}
-
-function createCheckbox(container) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "ic-Form-control ic-Form-control--checkbox";
-  wrapper.style.marginBottom = "15px";
-  wrapper.innerHTML = `
-    <input type="checkbox" id="${SELECTORS.custom_weight_checkbox}">
-    <label class="ic-Label" for="${SELECTORS.custom_weight_checkbox}">
-      Enable custom assignment weights
-    </label>
-  `;
-
-  container.appendChild(wrapper);
-  return wrapper.querySelector("input");
 }
 
 function createWeightsTable(container, categories, savedWeights) {
@@ -191,22 +175,4 @@ function createWeightRow(category, value) {
   });
 
   return row;
-}
-
-function setupCheckboxBehavior(checkbox, table) {
-  const saved_state_bool = loadCheckboxState();
-  checkbox.checked = saved_state_bool;
-  table.style.display = saved_state_bool ? "" : "none";
-
-  checkbox.addEventListener("change", (e) => {
-    const is_checked_bool = e.target.checked;
-    table.style.display = is_checked_bool ? "" : "none";
-    saveCheckboxState(is_checked_bool);
-    recalculateGrade();
-  });
-
-  // Recalculate on load if checkbox was previously checked
-  if (saved_state_bool) {
-    recalculateGrade();
-  }
 }

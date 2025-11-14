@@ -55,15 +55,24 @@ function saveGradePolicies(policiesMap) {
     return;
   }
 
-  const policies = {};
-  for (const [category, policy] of policiesMap.entries()) {
-    policies[category] = policy;
-  }
+  try {
+    const policies = {};
+    for (const [category, policy] of policiesMap.entries()) {
+      policies[category] = policy;
+    }
 
-  localStorage.setItem(
-    STORAGE_KEYS.policies(course_id),
-    JSON.stringify(policies)
-  );
+    localStorage.setItem(
+      STORAGE_KEYS.policies(course_id),
+      JSON.stringify(policies)
+    );
+  } catch (err) {
+    if (err.name === "QuotaExceededError") {
+      console.error("LocalStorage quota exceeded. Cannot save grade policies.");
+      alert("Unable to save grade policies. Storage quota exceeded.");
+    } else {
+      console.error("Failed to save grade policies:", err);
+    }
+  }
 }
 
 function loadGradePolicies() {
@@ -92,28 +101,8 @@ function loadGradePolicies() {
   }
 }
 
-function savePoliciesCheckboxState(checked) {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return;
-  }
-
-  localStorage.setItem(STORAGE_KEYS.policies_enabled(course_id), checked);
-}
-
-function loadPoliciesCheckboxState() {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return false;
-  }
-
-  return (
-    localStorage.getItem(STORAGE_KEYS.policies_enabled(course_id)) === "true"
-  );
-}
-
 function getGradePolicies() {
-  const tbody = document.getElementById(SELECTORS.grade_policies_body);
+  const tbody = getGradePoliciesBody();
   if (!tbody) {
     return new Map();
   }
@@ -149,33 +138,25 @@ function getGradePolicies() {
 // Grade Policies UI Functions
 // ============================================================================
 function createGradePoliciesUI(categories) {
-  const display_element = document.getElementById(SELECTORS.grade_display);
+  const display_element = getDisplayElement();
   if (!display_element) {
     return;
   }
 
   const saved_policies = loadGradePolicies();
   const container = createWeightsContainer(display_element);
-  const checkbox = createPoliciesCheckbox(container);
   const panel = createPoliciesPanel(container, categories, saved_policies);
 
-  setupPoliciesCheckboxBehavior(checkbox, panel);
-}
+  const course_id = getCourseId();
+  const { wrapper } = createFeatureCheckbox({
+    id: SELECTORS.grade_policies_checkbox,
+    label: "Enable grade policies (drop lowest, full credit thresholds)",
+    storageKey: STORAGE_KEYS.policies_enabled(course_id),
+    panel: panel,
+    onToggle: null,
+  });
 
-function createPoliciesCheckbox(container) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "ic-Form-control ic-Form-control--checkbox";
-  wrapper.style.marginBottom = "15px";
-  wrapper.style.marginTop = "20px";
-  wrapper.innerHTML = `
-    <input type="checkbox" id="${SELECTORS.grade_policies_checkbox}">
-    <label class="ic-Label" for="${SELECTORS.grade_policies_checkbox}">
-      Enable grade policies (drop lowest, full credit thresholds)
-    </label>
-  `;
-
-  container.appendChild(wrapper);
-  return wrapper.querySelector("input");
+  container.insertBefore(wrapper, panel);
 }
 
 function createPoliciesPanel(container, categories, savedPolicies) {
@@ -253,22 +234,4 @@ function createPolicyRow(category, savedPolicy) {
   }
 
   return row;
-}
-
-function setupPoliciesCheckboxBehavior(checkbox, panel) {
-  const saved_state = loadPoliciesCheckboxState();
-  checkbox.checked = saved_state;
-  panel.style.display = saved_state ? "" : "none";
-
-  checkbox.addEventListener("change", (e) => {
-    const is_checked = e.target.checked;
-    panel.style.display = is_checked ? "" : "none";
-    savePoliciesCheckboxState(is_checked);
-    recalculateGrade();
-  });
-
-  // Recalculate on load if checkbox was previously checked
-  if (saved_state) {
-    recalculateGrade();
-  }
 }
