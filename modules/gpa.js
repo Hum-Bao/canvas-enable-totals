@@ -34,19 +34,7 @@ function saveGPAScale(scaleArray) {
     return;
   }
 
-  try {
-    localStorage.setItem(
-      STORAGE_KEYS.gpa_scale(course_id),
-      JSON.stringify(scaleArray)
-    );
-  } catch (err) {
-    if (err.name === "QuotaExceededError") {
-      console.error("LocalStorage quota exceeded. Cannot save GPA scale.");
-      alert("Unable to save GPA scale. Storage quota exceeded.");
-    } else {
-      console.error("Failed to save GPA scale:", err);
-    }
-  }
+  saveToStorage(STORAGE_KEYS.gpa_scale(course_id), scaleArray);
 }
 
 function loadGPAScale() {
@@ -55,17 +43,7 @@ function loadGPAScale() {
     return null;
   }
 
-  const stored = localStorage.getItem(STORAGE_KEYS.gpa_scale(course_id));
-  if (!stored) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(stored);
-  } catch (err) {
-    console.error("Failed to load GPA scale:", err);
-    return null;
-  }
+  return loadFromStorage(STORAGE_KEYS.gpa_scale(course_id));
 }
 
 function getGPAScale() {

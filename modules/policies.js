@@ -55,24 +55,12 @@ function saveGradePolicies(policiesMap) {
     return;
   }
 
-  try {
-    const policies = {};
-    for (const [category, policy] of policiesMap.entries()) {
-      policies[category] = policy;
-    }
-
-    localStorage.setItem(
-      STORAGE_KEYS.policies(course_id),
-      JSON.stringify(policies)
-    );
-  } catch (err) {
-    if (err.name === "QuotaExceededError") {
-      console.error("LocalStorage quota exceeded. Cannot save grade policies.");
-      alert("Unable to save grade policies. Storage quota exceeded.");
-    } else {
-      console.error("Failed to save grade policies:", err);
-    }
+  const policies = {};
+  for (const [category, policy] of policiesMap.entries()) {
+    policies[category] = policy;
   }
+
+  saveToStorage(STORAGE_KEYS.policies(course_id), policies);
 }
 
 function loadGradePolicies() {
@@ -81,24 +69,17 @@ function loadGradePolicies() {
     return null;
   }
 
-  const stored = localStorage.getItem(STORAGE_KEYS.policies(course_id));
-  if (!stored) {
+  const policies_obj = loadFromStorage(STORAGE_KEYS.policies(course_id));
+  if (!policies_obj) {
     return null;
   }
 
-  try {
-    const policies_obj = JSON.parse(stored);
-    const policies_map = new Map();
-
-    for (const [category, policy] of Object.entries(policies_obj)) {
-      policies_map.set(category, policy);
-    }
-
-    return policies_map;
-  } catch (err) {
-    console.error("Failed to load grade policies:", err);
-    return null;
+  const policies_map = new Map();
+  for (const [category, policy] of Object.entries(policies_obj)) {
+    policies_map.set(category, policy);
   }
+
+  return policies_map;
 }
 
 function getGradePolicies() {
@@ -212,7 +193,7 @@ function createPolicyRow(category, savedPolicy) {
              value="${drop_lowest}" 
              data-policy="dropLowest"
              data-category="${category}"
-             style="width: 60px;"
+             class="policy-drop-input"
              title="Number of lowest grades to drop">
     </td>
     <td>
@@ -222,7 +203,7 @@ function createPolicyRow(category, savedPolicy) {
              value="${full_credit_threshold}" 
              data-policy="fullCreditThreshold"
              data-category="${category}"
-             style="width: 80px;"
+             class="policy-threshold-input"
              title="Award full credit if total points earned >= this value">
     </td>
   `;

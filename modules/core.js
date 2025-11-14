@@ -33,6 +33,11 @@ const STORAGE_KEYS = {
 };
 
 // ============================================================================
+// Constants
+// ============================================================================
+const EPSILON = 0.01; // For floating point comparison
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 const formatPercent = (n) => (Number.isFinite(n) ? n.toFixed(2) : "0.00");
@@ -43,6 +48,44 @@ const parseFloatOrZero = (value) => {
 };
 
 // ============================================================================
+// LocalStorage Helpers
+// ============================================================================
+function saveToStorage(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (err) {
+    if (err.name === "QuotaExceededError") {
+      console.error("LocalStorage quota exceeded. Cannot save data.");
+      alert("Unable to save settings. Storage quota exceeded.");
+    } else {
+      console.error("Failed to save to localStorage:", err);
+    }
+  }
+}
+
+function loadFromStorage(key) {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : null;
+  } catch (err) {
+    console.error("Failed to load from localStorage:", err);
+    return null;
+  }
+}
+
+function saveCheckboxState(key, checked) {
+  try {
+    localStorage.setItem(key, String(checked));
+  } catch (err) {
+    console.error("Failed to save checkbox state:", err);
+  }
+}
+
+function loadCheckboxState(key) {
+  return localStorage.getItem(key) === "true";
+}
+
+// ============================================================================
 // DOM Cache
 // ============================================================================
 const dom_cache = {
@@ -51,6 +94,7 @@ const dom_cache = {
   customWeightBody: null,
   gradePoliciesBody: null,
   gpaScaleBody: null,
+  gpaScaleCheckbox: null,
   courseId: null,
 };
 
@@ -99,6 +143,15 @@ function getGPAScaleBody() {
     dom_cache.gpaScaleBody = document.getElementById(SELECTORS.gpa_scale_body);
   }
   return dom_cache.gpaScaleBody;
+}
+
+function getGPAScaleCheckbox() {
+  if (!dom_cache.gpaScaleCheckbox) {
+    dom_cache.gpaScaleCheckbox = document.getElementById(
+      SELECTORS.gpa_scale_checkbox
+    );
+  }
+  return dom_cache.gpaScaleCheckbox;
 }
 
 // ============================================================================
@@ -150,7 +203,7 @@ function calculateFinalGrade(weight_map, grade_map, display_element) {
   }
 
   // Calculate GPA if enabled
-  const gpa_checkbox = document.getElementById(SELECTORS.gpa_scale_checkbox);
+  const gpa_checkbox = getGPAScaleCheckbox();
   let gpa_text = "";
 
   if (gpa_checkbox?.checked) {
@@ -350,6 +403,8 @@ function injectStyles() {
     .weights-section input[type="number"] { width: 70px; }
     .weights-section .gpa-input { width: 60px; }
     .weights-section .weight-input { width: 80px; }
+    .weights-section .policy-drop-input { width: 60px; }
+    .weights-section .policy-threshold-input { width: 80px; }
     .delete-row { 
       color: red; 
       font-weight: bold; 

@@ -12,20 +12,8 @@ function saveCustomWeights(weightMap) {
     return;
   }
 
-  try {
-    const weights = Object.fromEntries(weightMap);
-    localStorage.setItem(
-      STORAGE_KEYS.weights(course_id),
-      JSON.stringify(weights)
-    );
-  } catch (err) {
-    if (err.name === "QuotaExceededError") {
-      console.error("LocalStorage quota exceeded. Cannot save custom weights.");
-      alert("Unable to save custom weights. Storage quota exceeded.");
-    } else {
-      console.error("Failed to save custom weights:", err);
-    }
-  }
+  const weights = Object.fromEntries(weightMap);
+  saveToStorage(STORAGE_KEYS.weights(course_id), weights);
 }
 
 function loadCustomWeights() {
@@ -34,18 +22,8 @@ function loadCustomWeights() {
     return null;
   }
 
-  const saved = localStorage.getItem(STORAGE_KEYS.weights(course_id));
-  if (!saved) {
-    return null;
-  }
-
-  try {
-    const weights = JSON.parse(saved);
-    return new Map(Object.entries(weights));
-  } catch (e) {
-    console.warn("Failed to load saved weights:", e);
-    return null;
-  }
+  const weights = loadFromStorage(STORAGE_KEYS.weights(course_id));
+  return weights ? new Map(Object.entries(weights)) : null;
 }
 
 function getCustomWeights() {
@@ -87,7 +65,8 @@ function updateWeightTotal() {
   }
 
   total_element.textContent = `${total.toFixed(2)}%`;
-  total_element.style.color = Math.abs(total - 100) < 0.01 ? "inherit" : "red";
+  total_element.style.color =
+    Math.abs(total - 100) < EPSILON ? "inherit" : "red";
 }
 
 // ============================================================================
@@ -166,7 +145,7 @@ function createWeightRow(category, value) {
              step="0.01" 
              value="${value}" 
              data-category="${category}"
-             style="width: 80px;">
+             class="weight-input">
     </td>
   `;
 
