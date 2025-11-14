@@ -48,8 +48,12 @@
   const grade_map = extractGrades(weight_map);
   const categories = Array.from(grade_map.keys());
 
-  calculateFinalGrade(weight_map, grade_map, display_element);
+  // Create all UI elements first
   createCustomWeightsUI(categories);
   createGradePoliciesUI(categories);
   createGPAScaleUI();
+
+  // Then do initial calculation after all UI is ready
+  // This will properly account for any enabled features (weights, policies, GPA)
+  recalculateGrade();
 })();
