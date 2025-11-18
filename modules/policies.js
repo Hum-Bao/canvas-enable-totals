@@ -14,22 +14,22 @@ function applyGradePolicy(grades, policy) {
   let processed = [...grades];
 
   // Drop N lowest grades
-  if (policy.dropLowest > 0 && processed.length > policy.dropLowest) {
+  if (policy.drop_lowest > 0 && processed.length > policy.drop_lowest) {
     processed.sort((a, b) => {
       const percent_a = a.max_points > 0 ? a.points_received / a.max_points : 0;
       const percent_b = b.max_points > 0 ? b.points_received / b.max_points : 0;
       return percent_a - percent_b;
     });
-    processed = processed.slice(policy.dropLowest);
+    processed = processed.slice(policy.drop_lowest);
   }
 
   // Full credit if >= N points earned
-  if (policy.fullCreditThreshold > 0) {
+  if (policy.full_credit_threshold > 0) {
     const total_received = processed.reduce(
       (sum, g) => sum + g.points_received,
       0
     );
-    if (total_received >= policy.fullCreditThreshold) {
+    if (total_received >= policy.full_credit_threshold) {
       const total_possible = processed.reduce(
         (sum, g) => sum + g.max_points,
         0
@@ -49,14 +49,14 @@ function applyGradePolicy(grades, policy) {
 // ============================================================================
 // Grade Policies Storage Functions
 // ============================================================================
-function saveGradePolicies(policiesMap) {
+function saveGradePolicies(policies_map) {
   const course_id = getCourseId();
   if (!course_id) {
     return;
   }
 
   const policies = {};
-  for (const [category, policy] of policiesMap.entries()) {
+  for (const [category, policy] of policies_map.entries()) {
     policies[category] = policy;
   }
 
@@ -100,12 +100,12 @@ function getGradePolicies() {
 
     if (category) {
       const policy = {
-        dropLowest: parseInt(drop_input?.value || "0"),
-        fullCreditThreshold: parseFloat(threshold_input?.value || "0"),
+        drop_lowest: parseInt(drop_input?.value || "0"),
+        full_credit_threshold: parseFloat(threshold_input?.value || "0"),
       };
 
       // Only save if at least one policy is active
-      if (policy.dropLowest > 0 || policy.fullCreditThreshold > 0) {
+      if (policy.drop_lowest > 0 || policy.full_credit_threshold > 0) {
         policies_map.set(category, policy);
       }
     }
@@ -132,9 +132,9 @@ function createGradePoliciesUI(categories) {
   const { wrapper } = createFeatureCheckbox({
     id: SELECTORS.grade_policies_checkbox,
     label: "Enable grade policies (drop lowest, full credit thresholds)",
-    storageKey: STORAGE_KEYS.policies_enabled(course_id),
+    storage_key: STORAGE_KEYS.policiesEnabled(course_id),
     panel: panel,
-    onToggle: null,
+    on_toggle: null,
   });
 
   container.insertBefore(wrapper, panel);
@@ -142,7 +142,7 @@ function createGradePoliciesUI(categories) {
   // Don't recalculate here - init() will do it after all UI is set up
 }
 
-function createPoliciesPanel(container, categories, savedPolicies) {
+function createPoliciesPanel(container, categories, saved_policies) {
   const panel = document.createElement("div");
   panel.style.display = "none";
   panel.style.marginBottom = "20px";
@@ -165,24 +165,24 @@ function createPoliciesPanel(container, categories, savedPolicies) {
   container.appendChild(panel);
 
   const tbody = table.querySelector("tbody");
-  populatePoliciesTable(tbody, categories, savedPolicies);
+  populatePoliciesTable(tbody, categories, saved_policies);
 
   return panel;
 }
 
-function populatePoliciesTable(tbody, categories, savedPolicies) {
+function populatePoliciesTable(tbody, categories, saved_policies) {
   for (const category of categories) {
-    const saved_policy = savedPolicies?.get(category);
+    const saved_policy = saved_policies?.get(category);
     const row = createPolicyRow(category, saved_policy);
     tbody.appendChild(row);
   }
 }
 
-function createPolicyRow(category, savedPolicy) {
+function createPolicyRow(category, saved_policy) {
   const row = document.createElement("tr");
 
-  const drop_lowest = savedPolicy?.dropLowest || 0;
-  const full_credit_threshold = savedPolicy?.fullCreditThreshold || 0;
+  const drop_lowest = saved_policy?.dropLowest || 0;
+  const full_credit_threshold = saved_policy?.fullCreditThreshold || 0;
 
   row.innerHTML = `
     <th scope="row">${category}</th>

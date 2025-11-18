@@ -4,15 +4,45 @@
 // ============================================================================
 
 // ============================================================================
+// Default Weights Extraction
+// ============================================================================
+function extractDefaultWeights() {
+  const weight_map = new Map();
+  const weight_table = document.querySelector(SELECTORS.weight_table);
+
+  if (!weight_table) {
+    return weight_map;
+  }
+
+  const rows = weight_table.querySelectorAll("tbody tr");
+
+  for (const row of rows) {
+    const category_element = row.querySelector("th .context");
+    const weight_element = row.querySelector("td");
+
+    if (category_element && weight_element) {
+      const category = category_element.textContent.trim();
+      const weight = parseFloat(weight_element.textContent.replace("%", ""));
+
+      if (Number.isFinite(weight)) {
+        weight_map.set(category, weight);
+      }
+    }
+  }
+
+  return weight_map;
+}
+
+// ============================================================================
 // Custom Weights Storage Functions
 // ============================================================================
-function saveCustomWeights(weightMap) {
+function saveCustomWeights(weight_map) {
   const course_id = getCourseId();
   if (!course_id) {
     return;
   }
 
-  const weights = Object.fromEntries(weightMap);
+  const weights = Object.fromEntries(weight_map);
   saveToStorage(STORAGE_KEYS.weights(course_id), weights);
 }
 
@@ -86,9 +116,9 @@ function createCustomWeightsUI(categories) {
   const { wrapper } = createFeatureCheckbox({
     id: SELECTORS.custom_weight_checkbox,
     label: "Enable custom assignment weights",
-    storageKey: STORAGE_KEYS.enabled(course_id),
+    storage_key: STORAGE_KEYS.enabled(course_id),
     panel: panel,
-    onToggle: null,
+    on_toggle: null,
   });
 
   container.insertBefore(wrapper, panel);
@@ -97,7 +127,7 @@ function createCustomWeightsUI(categories) {
   // Don't recalculate here - init() will do it after all UI is set up
 }
 
-function createWeightsTable(container, categories, savedWeights) {
+function createWeightsTable(container, categories, saved_weights) {
   const table = document.createElement("table");
   table.className = "summary";
   table.style.display = "none";
@@ -121,14 +151,14 @@ function createWeightsTable(container, categories, savedWeights) {
   container.appendChild(table);
 
   const tbody = table.querySelector("tbody");
-  populateWeightsTable(tbody, categories, savedWeights);
+  populateWeightsTable(tbody, categories, saved_weights);
 
   return table;
 }
 
-function populateWeightsTable(tbody, categories, savedWeights) {
+function populateWeightsTable(tbody, categories, saved_weights) {
   for (const category of categories) {
-    const saved_value = savedWeights?.get(category) || 0;
+    const saved_value = saved_weights?.get(category) || 0;
     const row = createWeightRow(category, saved_value);
     tbody.appendChild(row);
   }

@@ -6,17 +6,17 @@
 // ============================================================================
 // GPA Calculation
 // ============================================================================
-function calculateGPA(percentage, gpaScale) {
-  if (!gpaScale || gpaScale.length === 0) {
+function calculateGPA(percentage, gpa_scale) {
+  if (!gpa_scale || gpa_scale.length === 0) {
     return null;
   }
 
   // Sort scale by min_percent descending to check from highest to lowest
-  const sortedScale = [...gpaScale].sort(
+  const sorted_scale = [...gpa_scale].sort(
     (a, b) => b.min_percent - a.min_percent
   );
 
-  for (const range of sortedScale) {
+  for (const range of sorted_scale) {
     if (percentage >= range.min_percent && percentage <= range.max_percent) {
       return range.gpa_value;
     }
@@ -28,13 +28,13 @@ function calculateGPA(percentage, gpaScale) {
 // ============================================================================
 // GPA Scale Storage Functions
 // ============================================================================
-function saveGPAScale(scaleArray) {
+function saveGPAScale(scale_array) {
   const course_id = getCourseId();
   if (!course_id) {
     return;
   }
 
-  saveToStorage(STORAGE_KEYS.gpa_scale(course_id), scaleArray);
+  saveToStorage(STORAGE_KEYS.gpaScale(course_id), scale_array);
 }
 
 function loadGPAScale() {
@@ -43,7 +43,7 @@ function loadGPAScale() {
     return null;
   }
 
-  return loadFromStorage(STORAGE_KEYS.gpa_scale(course_id));
+  return loadFromStorage(STORAGE_KEYS.gpaScale(course_id));
 }
 
 function getGPAScale() {
@@ -92,9 +92,9 @@ function createGPAScaleUI() {
   const { wrapper } = createFeatureCheckbox({
     id: SELECTORS.gpa_scale_checkbox,
     label: "Enable GPA calculation (4.0 scale)",
-    storageKey: STORAGE_KEYS.gpa_scale_enabled(course_id),
+    storage_key: STORAGE_KEYS.gpaScaleEnabled(course_id),
     panel: panel,
-    onToggle: null,
+    on_toggle: null,
   });
 
   container.insertBefore(wrapper, panel);
@@ -102,7 +102,7 @@ function createGPAScaleUI() {
   // Don't recalculate here - init() will do it after all UI is set up
 }
 
-function createGPAScalePanel(container, savedScale) {
+function createGPAScalePanel(container, saved_scale) {
   const panel = document.createElement("div");
   panel.style.display = "none";
   panel.style.marginBottom = "20px";
@@ -133,25 +133,25 @@ function createGPAScalePanel(container, savedScale) {
   panel.appendChild(table);
 
   const tbody = table.querySelector("tbody");
-  if (savedScale && savedScale.length > 0) {
-    populateGPAScaleTable(tbody, savedScale);
+  if (saved_scale && saved_scale.length > 0) {
+    populateGPAScaleTable(tbody, saved_scale);
   }
 
   // Add "Add Range" button
-  const addButton = document.createElement("button");
-  addButton.textContent = "+ Add Range";
-  addButton.className = "btn btn-small";
-  addButton.style.marginTop = "10px";
-  addButton.addEventListener("click", () => {
+  const add_button = document.createElement("button");
+  add_button.textContent = "+ Add Range";
+  add_button.className = "btn btn-small";
+  add_button.style.marginTop = "10px";
+  add_button.addEventListener("click", () => {
     const tbody_elem = document.getElementById(SELECTORS.gpa_scale_body);
-    const newRow = createGPAScaleRow({
+    const new_row = createGPAScaleRow({
       min_percent: 0,
       max_percent: 100,
       gpa_value: 0,
     });
-    tbody_elem.appendChild(newRow);
+    tbody_elem.appendChild(new_row);
   });
-  panel.appendChild(addButton);
+  panel.appendChild(add_button);
 
   container.appendChild(panel);
 
@@ -229,8 +229,8 @@ function createGPAScaleRow(range) {
   }
 
   // Add delete button listener
-  const deleteButton = row.querySelector(".delete-row");
-  deleteButton.addEventListener("click", () => {
+  const delete_button = row.querySelector(".delete-row");
+  delete_button.addEventListener("click", () => {
     row.remove();
     recalculateGrade();
   });

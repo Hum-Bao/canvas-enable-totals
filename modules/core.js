@@ -27,9 +27,9 @@ const STORAGE_KEYS = {
   weights: (course_id) => `canvas_custom_weights_${course_id}`,
   enabled: (course_id) => `canvas_custom_weights_enabled_${course_id}`,
   policies: (course_id) => `canvas_grade_policies_${course_id}`,
-  policies_enabled: (course_id) => `canvas_grade_policies_enabled_${course_id}`,
-  gpa_scale: (course_id) => `canvas_gpa_scale_${course_id}`,
-  gpa_scale_enabled: (course_id) => `canvas_gpa_scale_enabled_${course_id}`,
+  policiesEnabled: (course_id) => `canvas_grade_policies_enabled_${course_id}`,
+  gpaScale: (course_id) => `canvas_gpa_scale_${course_id}`,
+  gpaScaleEnabled: (course_id) => `canvas_gpa_scale_enabled_${course_id}`,
 };
 
 // ============================================================================
@@ -73,145 +73,126 @@ function loadFromStorage(key) {
   }
 }
 
-function saveCheckboxState(key, checked) {
-  try {
-    localStorage.setItem(key, String(checked));
-  } catch (err) {
-    console.error("Failed to save checkbox state:", err);
-  }
-}
-
-function loadCheckboxState(key) {
-  return localStorage.getItem(key) === "true";
-}
-
 // ============================================================================
 // DOM Cache
 // ============================================================================
 const dom_cache = {
-  gradeTable: null,
-  displayElement: null,
-  customWeightBody: null,
-  gradePoliciesBody: null,
-  gpaScaleBody: null,
-  gpaScaleCheckbox: null,
-  courseId: null,
+  grade_table: null,
+  display_element: null,
+  custom_weight_body: null,
+  grade_policies_body: null,
+  gpa_scale_body: null,
+  gpa_scale_checkbox: null,
+  course_id: null,
 };
 
 function getCourseId() {
-  if (!dom_cache.courseId) {
-    dom_cache.courseId =
+  if (!dom_cache.course_id) {
+    dom_cache.course_id =
       window.location.pathname.match(/\/courses\/(\d+)/)?.[1] || null;
   }
-  return dom_cache.courseId;
+  return dom_cache.course_id;
 }
 
 function getDisplayElement() {
-  if (!dom_cache.displayElement) {
-    dom_cache.displayElement = document.getElementById(SELECTORS.grade_display);
+  if (!dom_cache.display_element) {
+    dom_cache.display_element = document.getElementById(
+      SELECTORS.grade_display
+    );
   }
-  return dom_cache.displayElement;
+  return dom_cache.display_element;
 }
 
 function getGradeTable() {
-  if (!dom_cache.gradeTable) {
-    dom_cache.gradeTable = document.getElementById(SELECTORS.grade_table);
+  if (!dom_cache.grade_table) {
+    dom_cache.grade_table = document.getElementById(SELECTORS.grade_table);
   }
-  return dom_cache.gradeTable;
+  return dom_cache.grade_table;
 }
 
 function getCustomWeightBody() {
-  if (!dom_cache.customWeightBody) {
-    dom_cache.customWeightBody = document.getElementById(
+  if (!dom_cache.custom_weight_body) {
+    dom_cache.custom_weight_body = document.getElementById(
       SELECTORS.custom_weight_body
     );
   }
-  return dom_cache.customWeightBody;
+  return dom_cache.custom_weight_body;
 }
 
 function getGradePoliciesBody() {
-  if (!dom_cache.gradePoliciesBody) {
-    dom_cache.gradePoliciesBody = document.getElementById(
+  if (!dom_cache.grade_policies_body) {
+    dom_cache.grade_policies_body = document.getElementById(
       SELECTORS.grade_policies_body
     );
   }
-  return dom_cache.gradePoliciesBody;
+  return dom_cache.grade_policies_body;
 }
 
 function getGPAScaleBody() {
-  if (!dom_cache.gpaScaleBody) {
-    dom_cache.gpaScaleBody = document.getElementById(SELECTORS.gpa_scale_body);
+  if (!dom_cache.gpa_scale_body) {
+    dom_cache.gpa_scale_body = document.getElementById(
+      SELECTORS.gpa_scale_body
+    );
   }
-  return dom_cache.gpaScaleBody;
+  return dom_cache.gpa_scale_body;
 }
 
 function getGPAScaleCheckbox() {
-  if (!dom_cache.gpaScaleCheckbox) {
-    dom_cache.gpaScaleCheckbox = document.getElementById(
+  if (!dom_cache.gpa_scale_checkbox) {
+    dom_cache.gpa_scale_checkbox = document.getElementById(
       SELECTORS.gpa_scale_checkbox
     );
   }
-  return dom_cache.gpaScaleCheckbox;
+  return dom_cache.gpa_scale_checkbox;
 }
 
 // ============================================================================
 // Assignment Cache
 // ============================================================================
-let assignmentCache = null;
+let assignment_cache = null;
 
 function invalidateAssignmentCache() {
-  assignmentCache = null;
+  assignment_cache = null;
 }
-
 // ============================================================================
 // Grade Calculation Functions
 // ============================================================================
 function calculateFinalGrade(weight_map, grade_map, display_element) {
   let final_grade = 0;
-  let total_weight = 0;
 
   if (weight_map.size === 0) {
-    // Unweighted calculation
-    let received = 0;
-    let possible = 0;
-
-    for (const totals of grade_map.values()) {
-      if (totals?.possible > 0) {
-        received += totals.received;
-        possible += totals.possible;
-      }
+    // Unweighted: total points earned / total possible points
+    let total_received = 0;
+    let total_possible = 0;
+    for (const [, category_grades] of grade_map.entries()) {
+      total_received += category_grades.received;
+      total_possible += category_grades.possible;
     }
-
-    final_grade = possible > 0 ? (received / possible) * 100 : 0;
+    if (total_possible > 0) {
+      final_grade = (total_received / total_possible) * 100;
+    }
   } else {
-    // Weighted calculation
-    for (const [category, totals] of grade_map.entries()) {
-      if (!totals || totals.possible <= 0) {
-        continue;
-      }
+    // Weighted: multiply each category percentage by its weight
+    for (const [category, category_grades] of grade_map.entries()) {
+      const weight = weight_map.get(category) || 0;
 
-      const weight = weight_map.get(category);
-      if (weight == null || weight === 0) {
-        continue;
+      if (category_grades.possible > 0 && weight > 0) {
+        final_grade +=
+          (category_grades.received / category_grades.possible) * weight;
       }
-
-      total_weight += weight;
-      final_grade += (totals.received / totals.possible) * weight;
     }
-
-    final_grade = total_weight > 0 ? (final_grade * 100) / total_weight : 0;
   }
 
-  // Calculate GPA if enabled
+  // Calculate GPA if enabled (uses function from gpa.js)
   const gpa_checkbox = getGPAScaleCheckbox();
   let gpa_text = "";
 
   if (gpa_checkbox?.checked) {
     const gpa_scale = getGPAScale();
-    const gpa = calculateGPA(final_grade, gpa_scale);
+    const gpa_value = calculateGPA(final_grade, gpa_scale);
 
-    if (gpa !== null) {
-      gpa_text = ` (GPA: ${gpa.toFixed(2)})`;
+    if (gpa_value !== null) {
+      gpa_text = ` (${gpa_value.toFixed(2)})`;
     }
   }
 
@@ -220,8 +201,8 @@ function calculateFinalGrade(weight_map, grade_map, display_element) {
 }
 
 function extractAllAssignments(weight_map) {
-  if (assignmentCache) {
-    return assignmentCache;
+  if (assignment_cache) {
+    return assignment_cache;
   }
 
   const assignments_by_category = new Map();
@@ -248,7 +229,7 @@ function extractAllAssignments(weight_map) {
     });
   }
 
-  assignmentCache = assignments_by_category;
+  assignment_cache = assignments_by_category;
   return assignments_by_category;
 }
 
@@ -326,36 +307,6 @@ function extractGradeFromRow(row, weight_map) {
   };
 }
 
-function extractDefaultWeights() {
-  const weight_map = new Map();
-  const weight_table = document.querySelector(SELECTORS.weight_table);
-
-  if (!weight_table) {
-    console.warn("No default weights found. Using unweighted calculation.");
-    return weight_map;
-  }
-
-  const rows = weight_table.querySelectorAll("tbody tr");
-
-  for (const row of rows) {
-    const category_element = row.querySelector("th[scope='row']");
-    const weight_element = row.querySelector("td");
-
-    if (category_element && weight_element) {
-      const category = category_element.textContent.trim();
-      const weight_match = weight_element.textContent
-        .trim()
-        .match(/(\d+(?:\.\d+)?)%/);
-
-      if (weight_match) {
-        weight_map.set(category, parseFloat(weight_match[1]));
-      }
-    }
-  }
-
-  return weight_map;
-}
-
 function recalculateGrade() {
   // Invalidate cache since we're recalculating
   invalidateAssignmentCache();
@@ -417,7 +368,7 @@ function injectStyles() {
 // Generic Checkbox Factory
 // ============================================================================
 function createFeatureCheckbox(config) {
-  const { id, label, storageKey, panel, onToggle } = config;
+  const { id, label, storage_key, panel, on_toggle } = config;
 
   const wrapper = document.createElement("div");
   wrapper.className = "ic-Form-control ic-Form-control--checkbox";
@@ -429,22 +380,22 @@ function createFeatureCheckbox(config) {
   const checkbox = wrapper.querySelector("input");
 
   try {
-    const savedState = localStorage.getItem(storageKey) === "true";
-    checkbox.checked = savedState;
-    panel.style.display = savedState ? "" : "none";
+    const saved_state = localStorage.getItem(storage_key) === "true";
+    checkbox.checked = saved_state;
+    panel.style.display = saved_state ? "" : "none";
 
     checkbox.addEventListener("change", (e) => {
-      const isChecked = e.target.checked;
-      panel.style.display = isChecked ? "" : "none";
+      const is_checked = e.target.checked;
+      panel.style.display = is_checked ? "" : "none";
 
       try {
-        localStorage.setItem(storageKey, isChecked);
+        localStorage.setItem(storage_key, is_checked);
       } catch (err) {
         console.error("Failed to save checkbox state:", err);
       }
 
-      if (onToggle) {
-        onToggle(isChecked);
+      if (on_toggle) {
+        on_toggle(is_checked);
       }
       recalculateGrade();
     });
@@ -455,13 +406,13 @@ function createFeatureCheckbox(config) {
   return { wrapper, checkbox };
 }
 
-function createWeightsContainer(displayElement) {
+function createWeightsContainer(display_element) {
   let container = document.querySelector(".weights-section");
 
   if (!container) {
     container = document.createElement("div");
     container.className = "weights-section";
-    displayElement.parentElement.appendChild(container);
+    display_element.parentElement.appendChild(container);
   }
 
   return container;
