@@ -37,22 +37,12 @@ function extractDefaultWeights() {
 // Custom Weights Storage Functions
 // ============================================================================
 function saveCustomWeights(weight_map) {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return;
-  }
-
   const weights = Object.fromEntries(weight_map);
-  saveToStorage(STORAGE_KEYS.weights(course_id), weights);
+  updateCourseSetting("weights", weights);
 }
 
 function loadCustomWeights() {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return null;
-  }
-
-  const weights = loadFromStorage(STORAGE_KEYS.weights(course_id));
+  const weights = loadCourseSetting("weights", null);
   return weights ? new Map(Object.entries(weights)) : null;
 }
 
@@ -112,11 +102,10 @@ function createCustomWeightsUI(categories) {
   const container = createWeightsContainer(display_element);
   const panel = createWeightsTable(container, categories, saved_weights);
 
-  const course_id = getCourseId();
   const { wrapper } = createFeatureCheckbox({
     id: SELECTORS.custom_weight_checkbox,
     label: "Enable custom assignment weights",
-    storage_key: STORAGE_KEYS.enabled(course_id),
+    setting_key: "weights_enabled",
     panel: panel,
     on_toggle: null,
   });
@@ -128,29 +117,21 @@ function createCustomWeightsUI(categories) {
 }
 
 function createWeightsTable(container, categories, saved_weights) {
-  const table = document.createElement("table");
-  table.className = "summary";
-  table.style.display = "none";
-
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th scope="col">Group</th>
-        <th scope="col">Weight (%)</th>
-      </tr>
-    </thead>
-    <tbody id="${SELECTORS.custom_weight_body}"></tbody>
-    <tfoot>
-      <tr style="font-weight: bold;">
-        <th scope="row">Total</th>
-        <td id="${SELECTORS.custom_weight_total}">0%</td>
-      </tr>
-    </tfoot>
+  const footer_html = `
+    <tr style="font-weight: bold;">
+      <th scope="row">Total</th>
+      <td id="${SELECTORS.custom_weight_total}">0%</td>
+    </tr>
   `;
 
-  container.appendChild(table);
+  const { element: table, tbody } = createFeatureTable({
+    headers: ["Group", "Weight (%)"],
+    tbody_id: SELECTORS.custom_weight_body,
+    include_panel: false,
+    footer_html: footer_html,
+  });
 
-  const tbody = table.querySelector("tbody");
+  container.appendChild(table);
   populateWeightsTable(tbody, categories, saved_weights);
 
   return table;
@@ -180,8 +161,16 @@ function createWeightRow(category, value) {
   `;
 
   const input = row.querySelector("input");
+
+  // Use 'input' event for immediate visual feedback on total
   input.addEventListener("input", () => {
     updateWeightTotal();
+    // Use debounced recalculation to avoid excessive computation
+    debounced_recalculate();
+  });
+
+  // Also recalculate immediately on blur for instant feedback when done
+  input.addEventListener("blur", () => {
     recalculateGrade();
   });
 

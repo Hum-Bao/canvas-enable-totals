@@ -50,26 +50,16 @@ function applyGradePolicy(grades, policy) {
 // Grade Policies Storage Functions
 // ============================================================================
 function saveGradePolicies(policies_map) {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return;
-  }
-
   const policies = {};
   for (const [category, policy] of policies_map.entries()) {
     policies[category] = policy;
   }
 
-  saveToStorage(STORAGE_KEYS.policies(course_id), policies);
+  updateCourseSetting("policies", policies);
 }
 
 function loadGradePolicies() {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return null;
-  }
-
-  const policies_obj = loadFromStorage(STORAGE_KEYS.policies(course_id));
+  const policies_obj = loadCourseSetting("policies", null);
   if (!policies_obj) {
     return null;
   }
@@ -93,9 +83,9 @@ function getGradePolicies() {
 
   for (const row of rows) {
     const category = row.querySelector("th")?.textContent.trim();
-    const drop_input = row.querySelector("input[data-policy='dropLowest']");
+    const drop_input = row.querySelector("input[data-policy='drop_lowest']");
     const threshold_input = row.querySelector(
-      "input[data-policy='fullCreditThreshold']"
+      "input[data-policy='full_credit_threshold']"
     );
 
     if (category) {
@@ -128,11 +118,10 @@ function createGradePoliciesUI(categories) {
   const container = createWeightsContainer(display_element);
   const panel = createPoliciesPanel(container, categories, saved_policies);
 
-  const course_id = getCourseId();
   const { wrapper } = createFeatureCheckbox({
     id: SELECTORS.grade_policies_checkbox,
     label: "Enable grade policies (drop lowest, full credit thresholds)",
-    storage_key: STORAGE_KEYS.policiesEnabled(course_id),
+    setting_key: "policies_enabled",
     panel: panel,
     on_toggle: null,
   });
@@ -143,28 +132,13 @@ function createGradePoliciesUI(categories) {
 }
 
 function createPoliciesPanel(container, categories, saved_policies) {
-  const panel = document.createElement("div");
-  panel.style.display = "none";
-  panel.style.marginBottom = "20px";
+  const { element: panel, tbody } = createFeatureTable({
+    headers: ["Category", "Drop N Lowest", "Full Credit if ≥"],
+    tbody_id: SELECTORS.grade_policies_body,
+    include_panel: true,
+  });
 
-  const table = document.createElement("table");
-  table.className = "summary";
-
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th scope="col">Category</th>
-        <th scope="col">Drop N Lowest</th>
-        <th scope="col">Full Credit if ≥</th>
-      </tr>
-    </thead>
-    <tbody id="${SELECTORS.grade_policies_body}"></tbody>
-  `;
-
-  panel.appendChild(table);
   container.appendChild(panel);
-
-  const tbody = table.querySelector("tbody");
   populatePoliciesTable(tbody, categories, saved_policies);
 
   return panel;
@@ -181,8 +155,8 @@ function populatePoliciesTable(tbody, categories, saved_policies) {
 function createPolicyRow(category, saved_policy) {
   const row = document.createElement("tr");
 
-  const drop_lowest = saved_policy?.dropLowest || 0;
-  const full_credit_threshold = saved_policy?.fullCreditThreshold || 0;
+  const drop_lowest = saved_policy?.drop_lowest || 0;
+  const full_credit_threshold = saved_policy?.full_credit_threshold || 0;
 
   row.innerHTML = `
     <th scope="row">${category}</th>
@@ -191,7 +165,7 @@ function createPolicyRow(category, saved_policy) {
              min="0" 
              step="1" 
              value="${drop_lowest}" 
-             data-policy="dropLowest"
+             data-policy="drop_lowest"
              data-category="${category}"
              class="policy-drop-input"
              title="Number of lowest grades to drop">
@@ -201,19 +175,30 @@ function createPolicyRow(category, saved_policy) {
              min="0" 
              step="0.01" 
              value="${full_credit_threshold}" 
-             data-policy="fullCreditThreshold"
+             data-policy="full_credit_threshold"
              data-category="${category}"
              class="policy-threshold-input"
              title="Award full credit if total points earned >= this value">
     </td>
   `;
 
-  // Add change listeners
+  // Add change listeners with debouncing
   const inputs = row.querySelectorAll("input, select");
   for (const input of inputs) {
-    input.addEventListener("change", () => {
-      recalculateGrade();
-    });
+    // For number inputs, debounce to handle spinner dragging
+    if (input.type === "number") {
+      input.addEventListener("input", () => {
+        debounced_recalculate();
+      });
+      input.addEventListener("blur", () => {
+        recalculateGrade();
+      });
+    } else {
+      // For other inputs, recalculate immediately
+      input.addEventListener("change", () => {
+        recalculateGrade();
+      });
+    }
   }
 
   return row;

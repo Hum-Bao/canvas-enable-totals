@@ -29,21 +29,11 @@ function calculateGPA(percentage, gpa_scale) {
 // GPA Scale Storage Functions
 // ============================================================================
 function saveGPAScale(scale_array) {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return;
-  }
-
-  saveToStorage(STORAGE_KEYS.gpaScale(course_id), scale_array);
+  updateCourseSetting("gpa_scale", scale_array);
 }
 
 function loadGPAScale() {
-  const course_id = getCourseId();
-  if (!course_id) {
-    return null;
-  }
-
-  return loadFromStorage(STORAGE_KEYS.gpaScale(course_id));
+  return loadCourseSetting("gpa_scale", null);
 }
 
 function getGPAScale() {
@@ -88,11 +78,10 @@ function createGPAScaleUI() {
   const container = createWeightsContainer(display_element);
   const panel = createGPAScalePanel(container, saved_scale);
 
-  const course_id = getCourseId();
   const { wrapper } = createFeatureCheckbox({
     id: SELECTORS.gpa_scale_checkbox,
     label: "Enable GPA calculation (4.0 scale)",
-    storage_key: STORAGE_KEYS.gpaScaleEnabled(course_id),
+    setting_key: "gpa_scale_enabled",
     panel: panel,
     on_toggle: null,
   });
@@ -103,36 +92,20 @@ function createGPAScaleUI() {
 }
 
 function createGPAScalePanel(container, saved_scale) {
-  const panel = document.createElement("div");
-  panel.style.display = "none";
-  panel.style.marginBottom = "20px";
+  const {
+    element: panel,
+    table,
+    tbody,
+  } = createFeatureTable({
+    headers: ["Min %", "Max %", "GPA", "Action"],
+    tbody_id: SELECTORS.gpa_scale_body,
+    include_panel: true,
+    description:
+      "Define your GPA scale ranges. Click 'Add Range' to get started.",
+  });
 
-  const description = document.createElement("p");
-  description.style.marginBottom = "10px";
-  description.style.fontSize = "0.9em";
-  description.textContent =
-    "Define your GPA scale ranges. Click 'Add Range' to get started.";
-  panel.appendChild(description);
-
-  const table = document.createElement("table");
-  table.className = "summary";
   table.style.fontSize = "0.9em";
 
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th scope="col">Min %</th>
-        <th scope="col">Max %</th>
-        <th scope="col">GPA</th>
-        <th scope="col">Action</th>
-      </tr>
-    </thead>
-    <tbody id="${SELECTORS.gpa_scale_body}"></tbody>
-  `;
-
-  panel.appendChild(table);
-
-  const tbody = table.querySelector("tbody");
   if (saved_scale && saved_scale.length > 0) {
     populateGPAScaleTable(tbody, saved_scale);
   }
