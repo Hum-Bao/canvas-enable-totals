@@ -21,6 +21,7 @@ const SELECTORS = {
   grade_policies_body: "grade-policies-body",
   gpa_scale_checkbox: "enable_gpa_scale",
   gpa_scale_body: "gpa-scale-body",
+  only_graded_checkbox: "only_consider_graded_assignments",
 };
 
 const STORAGE_KEYS = {
@@ -239,13 +240,14 @@ function getGPAScaleCheckbox() {
 // Assignment Cache
 // ============================================================================
 let assignment_cache = null;
-let cached_weight_map_size = 0;
+let cached_only_graded = true;
 
-// Check if cache should be invalidated based on whether weights changed
-function shouldInvalidateCache(weight_map) {
-  // Only invalidate if the weight map structure changed (categories added/removed)
-  // Not just because values changed
-  return !assignment_cache || weight_map.size !== cached_weight_map_size;
+// Check if cache should be invalidated based on checkbox state
+function shouldInvalidateCache(only_graded) {
+  // Invalidate if:
+  // 1. No cache exists
+  // 2. "Only graded" checkbox state changed
+  return !assignment_cache || only_graded !== cached_only_graded;
 }
 // ============================================================================
 // Grade Calculation Functions
@@ -293,9 +295,15 @@ function calculateFinalGrade(weight_map, grade_map, display_element) {
   display_element.textContent = `Total: ${formatPercent(final_grade)}%${gpa_text}`;
 }
 
-function extractAllAssignments(weight_map) {
+function extractAllAssignments() {
+  // Check if we should include ungraded assignments
+  const only_graded_checkbox = document.getElementById(
+    SELECTORS.only_graded_checkbox
+  );
+  const only_graded = only_graded_checkbox?.checked ?? true;
+
   // Check if we should use cache or rebuild
-  if (assignment_cache && !shouldInvalidateCache(weight_map)) {
+  if (assignment_cache && !shouldInvalidateCache(only_graded)) {
     return assignment_cache;
   }
 
@@ -309,7 +317,8 @@ function extractAllAssignments(weight_map) {
   const rows = grade_table.querySelectorAll("tbody tr");
 
   for (const row of rows) {
-    const grade = extractGradeFromRow(row, weight_map);
+    // Don't filter by weights here - let extractGrades handle that
+    const grade = extractGradeFromRow(row, null, only_graded);
     if (!grade) {
       continue;
     }
@@ -326,16 +335,20 @@ function extractAllAssignments(weight_map) {
   }
 
   assignment_cache = assignments_by_category;
-  cached_weight_map_size = weight_map.size;
+  cached_only_graded = only_graded;
   return assignments_by_category;
 }
-
 function extractGrades(weight_map, grade_policies = null) {
   const grade_map = new Map();
-  const individual_grades = extractAllAssignments(weight_map);
+  const individual_grades = extractAllAssignments();
 
   // Apply grade policies and calculate totals
   for (const [category, grades] of individual_grades.entries()) {
+    // Skip zero-weight categories (filter here instead of during extraction)
+    if (weight_map && weight_map.get(category) === 0) {
+      continue;
+    }
+
     const policy = grade_policies?.get(category);
     const processed_grades = applyGradePolicy(grades, policy);
 
@@ -353,7 +366,7 @@ function extractGrades(weight_map, grade_policies = null) {
   return grade_map;
 }
 
-function extractGradeFromRow(row, weight_map) {
+function extractGradeFromRow(row, weight_map, only_graded = true) {
   // Cache all selector queries for this row at once
   const max_points_element = row.querySelector(SELECTORS.max_points);
   const category_element = row.querySelector(SELECTORS.category);
@@ -375,21 +388,29 @@ function extractGradeFromRow(row, weight_map) {
   // Extract category
   const category = category_element.textContent.trim();
 
-  // Skip zero-weight categories
-  if (weight_map?.get(category) === 0) {
-    return null;
-  }
-
   // Extract points received
   const points_received_text =
     points_received_element.lastChild.textContent.trim();
-  if (points_received_text.includes("-")) {
-    return null;
-  } // Ungraded
 
-  const points_received = parseFloat(points_received_text);
-  if (!Number.isFinite(points_received)) {
+  // Check if assignment is graded
+  // Ungraded assignments typically show as "-" or "N/A"
+  const is_graded =
+    points_received_text !== "-" &&
+    points_received_text !== "" &&
+    !points_received_text.includes("N/A");
+
+  // If only considering graded assignments, skip ungraded
+  if (only_graded && !is_graded) {
     return null;
+  }
+
+  // For ungraded assignments, use 0 points received but include max points
+  let points_received = 0;
+  if (is_graded) {
+    points_received = parseFloat(points_received_text);
+    if (!Number.isFinite(points_received)) {
+      return null;
+    }
   }
 
   return {

@@ -53,6 +53,16 @@
   createGradePoliciesUI(categories);
   createGPAScaleUI();
 
+  // Listen to Canvas's "only graded assignments" checkbox
+  const only_graded_checkbox = document.getElementById(
+    "only_consider_graded_assignments"
+  );
+  if (only_graded_checkbox) {
+    only_graded_checkbox.addEventListener("change", () => {
+      recalculateGrade();
+    });
+  }
+
   // Then do initial calculation after all UI is ready
   // This will properly account for any enabled features (weights, policies, GPA)
   recalculateGrade();
